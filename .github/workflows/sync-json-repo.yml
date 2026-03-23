@@ -1,0 +1,46 @@
+name: Sync json_repo from upstream
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # Every day at 6:00 UTC
+  workflow_dispatch:        # Allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          ref: dev-container
+          fetch-depth: 0
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/CWE-CAPEC/REST-API-wg.git
+          git fetch upstream main
+
+      - name: Check for changes in json_repo
+        id: check
+        run: |
+          DIFF=$(git diff HEAD upstream/main -- json_repo/)
+          if [ -z "$DIFF" ]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes in json_repo."
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in json_repo."
+          fi
+
+      - name: Apply json_repo changes
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git checkout upstream/main -- json_repo/
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add json_repo/
+          git commit -m "chore: sync json_repo from upstream $(date +'%Y-%m-%d')"
+          git push origin dev-container
