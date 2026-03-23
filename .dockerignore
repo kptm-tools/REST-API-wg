@@ -1,0 +1,7 @@
+.git
+.github
+briefings/
+minutes/
+*.pdf
+*.png
+*.md
